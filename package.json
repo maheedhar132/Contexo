@@ -1,0 +1,62 @@
+{
+  "name": "portalctx",
+  "version": "0.1.0",
+  "description": "Portable AI context and cost control across every AI coding harness.",
+  "keywords": [
+    "ai",
+    "mcp",
+    "claude-code",
+    "cursor",
+    "codex",
+    "llm",
+    "context",
+    "tokens",
+    "cost"
+  ],
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "portal": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.3.0",
+    "commander": "^12.1.0",
+    "kleur": "^4.1.5",
+    "tiktoken": "^1.0.17",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
