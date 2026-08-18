@@ -7,7 +7,12 @@ Contexo gives you four MCP tools backed by a local SQLite store at `~/.contexo`:
 
 - **save_context** — save the current session (raw text) so it can be
   resumed later or handed off to another harness. Use this before a long
-  session ends, or right before the user says they're switching tools.
+  session ends, or right before the user says they're switching tools. Pass
+  `continues_session_id` (the id or prefix of a prior session) when this
+  session is a continuation of earlier work in another harness — e.g. the
+  user picked up in Codex from context that was handed off from Claude
+  Code. That makes the next handoff cumulative: it compresses the whole
+  chain, not just this one session.
 - **load_context** — load a previously-saved session by id or id prefix.
   Returns the compressed version if one exists, otherwise raw.
 - **estimate_cost** — tokenize a prompt against a given model and return
@@ -22,8 +27,11 @@ because they wrap an external process or write harness-specific config
 files rather than reading/writing the session store:
 
 - `contexo handoff <claude-code|codex|cursor>` — compresses the latest (or
-  a chosen) session and writes it into that harness's config file
-  (`CLAUDE.md`, `AGENTS.md`, or `.cursorrules`). If the user wants to
+  a chosen) session — and its full chain, if it was saved with
+  `continues_session_id` — and writes it into that harness's config file
+  (`CLAUDE.md`, `AGENTS.md`, or `.cursorrules`). It also reconciles against
+  whatever handoff is already in that file, so a decision that got
+  reversed doesn't get silently restated as current. If the user wants to
   actually switch harnesses with full context, tell them to run this in
   their terminal — it's not something this MCP server can do on their
   behalf, since it edits files in their project outside this session.

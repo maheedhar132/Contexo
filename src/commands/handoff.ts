@@ -1,7 +1,7 @@
 import kleur from "kleur";
-import { getSession, listSessions, setCompressed } from "../db.js";
-import { getAdapter, wrapContexoBlock, type HarnessId } from "../adapters/index.js";
-import { compressContext } from "../compress.js";
+import { getSession, listSessions, setCompressed, getSessionChain } from "../db.js";
+import { getAdapter, wrapContexoBlock, extractContexoBlockBody, type HarnessId } from "../adapters/index.js";
+import { compressContext, buildCumulativeRawContext } from "../compress.js";
 import { countTokens, formatUsd, type ModelId } from "../cost.js";
 
 export type HandoffOptions = {
@@ -20,16 +20,37 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
     return;
   }
 
+  const chain = getSessionChain(sessionRow.id);
+  const cumulative = chain.length > 1;
+  const rawTokensTotal = chain.reduce((sum, s) => sum + s.raw_tokens, 0);
+
+  const adapter = getAdapter(target);
+  const existingTargetContent = adapter.read(cwd);
+  const previousBrief = existingTargetContent ? extractContexoBlockBody(existingTargetContent) : null;
+
   let body = opts.skipCompression ? null : sessionRow.compressed_context;
-  let compressedTokens = opts.skipCompression ? sessionRow.raw_tokens : sessionRow.compressed_tokens ?? 0;
+  // A previously-compressed single-session cache can't be reused once this
+  // handoff needs to be cumulative or diffed against a previous brief — both
+  // require a fresh compression call over the full chain.
+  if (body && (cumulative || previousBrief)) body = null;
+  let compressedTokens = opts.skipCompression ? rawTokensTotal : sessionRow.compressed_tokens ?? 0;
 
   if (!body && !opts.skipCompression) {
-    console.log(kleur.dim("Compressing (using your ANTHROPIC_API_KEY, ~$0.001 per compression)..."));
+    const rawInput = cumulative ? buildCumulativeRawContext(chain) : sessionRow.raw_context;
+    const label = [cumulative && `${chain.length} chained sessions`, previousBrief && "diffing against existing handoff"]
+      .filter(Boolean)
+      .join(", ");
+    console.log(
+      kleur.dim(`Compressing${label ? ` (${label})` : ""} (using your ANTHROPIC_API_KEY, ~$0.001 per compression)...`),
+    );
     try {
-      const result = await compressContext(sessionRow.raw_context, opts.apiKey);
+      const result = await compressContext(rawInput, opts.apiKey, previousBrief);
       body = result.compressed;
       compressedTokens = countTokens(body, "claude-sonnet-4-5" as ModelId);
-      setCompressed(sessionRow.id, body, compressedTokens);
+      // Only cache on the leaf session, and only when it's a plain
+      // single-session compression — a cumulative/diffed result is specific
+      // to this handoff's target and previous state, not reusable as-is.
+      if (!cumulative && !previousBrief) setCompressed(sessionRow.id, body, compressedTokens);
       const compressionCost = (result.inputTokens * 1 + result.outputTokens * 5) / 1_000_000;
       console.log(
         kleur.dim(
@@ -41,13 +62,13 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
       const msg = err instanceof Error ? err.message : String(err);
       console.log(kleur.yellow("! ") + msg);
       console.log(kleur.dim("Falling back to raw context (larger, but still works)."));
-      body = sessionRow.raw_context;
-      compressedTokens = sessionRow.raw_tokens;
+      body = cumulative ? buildCumulativeRawContext(chain) : sessionRow.raw_context;
+      compressedTokens = rawTokensTotal;
     }
   }
 
-  const block = wrapContexoBlock(body ?? sessionRow.raw_context, sessionRow.id, sessionRow.harness_source);
-  const adapter = getAdapter(target);
+  const fallbackRaw = cumulative ? buildCumulativeRawContext(chain) : sessionRow.raw_context;
+  const block = wrapContexoBlock(body ?? fallbackRaw, sessionRow.id, sessionRow.harness_source);
   const writtenTo = adapter.writeContexoBlock(cwd, block);
 
   console.log(
@@ -55,12 +76,16 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
       ` Handoff ready: ${kleur.bold(adapter.displayName)}` +
       kleur.dim(` (${writtenTo})`),
   );
+  if (cumulative) {
+    console.log(kleur.dim(`  cumulative across ${chain.length} sessions: ${chain.map((s) => s.harness_source ?? "?").join(" → ")}`));
+  }
+  if (previousBrief) {
+    console.log(kleur.dim("  diffed against the existing handoff already in this file"));
+  }
   const savedPct =
-    sessionRow.raw_tokens > 0 && compressedTokens > 0
-      ? ((1 - compressedTokens / sessionRow.raw_tokens) * 100).toFixed(1)
-      : null;
+    rawTokensTotal > 0 && compressedTokens > 0 ? ((1 - compressedTokens / rawTokensTotal) * 100).toFixed(1) : null;
   console.log(
-    `  ${kleur.dim("raw")}         ${sessionRow.raw_tokens.toLocaleString()} tokens\n` +
+    `  ${kleur.dim("raw")}         ${rawTokensTotal.toLocaleString()} tokens\n` +
       `  ${kleur.dim("handoff")}     ${compressedTokens.toLocaleString()} tokens` +
       (savedPct ? kleur.green(`  (-${savedPct}%)`) : ""),
   );

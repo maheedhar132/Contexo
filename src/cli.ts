@@ -24,12 +24,14 @@ program
   .option("-f, --file <path>", "Read context from file")
   .option("-t, --text <text>", "Inline context string")
   .option("-m, --model <model>", "Model for token counting", "claude-sonnet-4-5")
+  .option("-c, --continues <id>", "Chain this session onto a prior one (id or prefix), for cumulative handoff")
   .action(async (opts) => {
     await saveCommand({
       name: opts.name,
       file: opts.file,
       text: opts.text,
       model: opts.model as ModelId,
+      continues: opts.continues,
     });
   });
 

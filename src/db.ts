@@ -9,6 +9,7 @@ export type SessionRow = {
   compressed_context: string | null;
   raw_tokens: number;
   compressed_tokens: number | null;
+  parent_session_id: string | null;
   created_at: number;
   updated_at: number;
 };
@@ -54,6 +55,7 @@ function migrate(conn: Database.Database): void {
       compressed_context TEXT,
       raw_tokens INTEGER NOT NULL DEFAULT 0,
       compressed_tokens INTEGER,
+      parent_session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -76,6 +78,14 @@ function migrate(conn: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_runs_ts ON runs(ts);
     CREATE INDEX IF NOT EXISTS idx_runs_session ON runs(session_id);
   `);
+
+  // sessions.parent_session_id didn't exist before 0.3.0 — add it for
+  // databases created by earlier versions. CREATE TABLE IF NOT EXISTS above
+  // only covers brand-new databases.
+  const columns = conn.prepare(`PRAGMA table_info(sessions)`).all() as { name: string }[];
+  if (!columns.some((c) => c.name === "parent_session_id")) {
+    conn.exec(`ALTER TABLE sessions ADD COLUMN parent_session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL`);
+  }
 }
 
 export function saveSession(input: {
@@ -84,19 +94,46 @@ export function saveSession(input: {
   harnessSource: string | null;
   rawContext: string;
   rawTokens: number;
+  parentSessionId?: string | null;
 }): void {
   const now = Date.now();
   db().prepare(
     `INSERT INTO sessions
-       (id, name, harness_source, raw_context, raw_tokens, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+       (id, name, harness_source, raw_context, raw_tokens, parent_session_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        name=excluded.name,
        harness_source=excluded.harness_source,
        raw_context=excluded.raw_context,
        raw_tokens=excluded.raw_tokens,
+       parent_session_id=excluded.parent_session_id,
        updated_at=excluded.updated_at`,
-  ).run(input.id, input.name, input.harnessSource, input.rawContext, input.rawTokens, now, now);
+  ).run(
+    input.id,
+    input.name,
+    input.harnessSource,
+    input.rawContext,
+    input.rawTokens,
+    input.parentSessionId ?? null,
+    now,
+    now,
+  );
+}
+
+// Walks parent_session_id back to the root and returns the full lineage
+// oldest -> newest, so a handoff can compress everything that happened
+// across every harness hop, not just the most recent save. Guards against
+// a cycle (shouldn't happen, but a corrupted DB shouldn't infinite-loop).
+export function getSessionChain(id: string): SessionRow[] {
+  const chain: SessionRow[] = [];
+  const seen = new Set<string>();
+  let current = getSession(id);
+  while (current && !seen.has(current.id)) {
+    chain.push(current);
+    seen.add(current.id);
+    current = current.parent_session_id ? getSession(current.parent_session_id) : undefined;
+  }
+  return chain.reverse();
 }
 
 export function setCompressed(id: string, compressed: string, tokens: number): void {

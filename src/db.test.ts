@@ -29,6 +29,39 @@ describe("sessions", () => {
   });
 });
 
+describe("session chains", () => {
+  it("links a session to its parent and walks the full lineage oldest-first", async () => {
+    const db = await import("./db.js");
+    db.saveSession({ id: "c1", name: "claude leg", harnessSource: "claude-code", rawContext: "a", rawTokens: 1 });
+    db.saveSession({
+      id: "c2",
+      name: "codex leg",
+      harnessSource: "codex",
+      rawContext: "b",
+      rawTokens: 1,
+      parentSessionId: "c1",
+    });
+    db.saveSession({
+      id: "c3",
+      name: "cursor leg",
+      harnessSource: "cursor",
+      rawContext: "c",
+      rawTokens: 1,
+      parentSessionId: "c2",
+    });
+
+    const chain = db.getSessionChain("c3");
+    expect(chain.map((s) => s.id)).toEqual(["c1", "c2", "c3"]);
+    expect(chain.map((s) => s.harness_source)).toEqual(["claude-code", "codex", "cursor"]);
+  });
+
+  it("a session with no parent is a chain of one", async () => {
+    const db = await import("./db.js");
+    db.saveSession({ id: "solo", name: "solo", harnessSource: null, rawContext: "x", rawTokens: 1 });
+    expect(db.getSessionChain("solo").map((s) => s.id)).toEqual(["solo"]);
+  });
+});
+
 describe("budgets and runs", () => {
   it("sets/gets a budget and sums spend since a timestamp", async () => {
     const db = await import("./db.js");

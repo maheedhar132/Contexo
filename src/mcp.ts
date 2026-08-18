@@ -15,6 +15,7 @@ const SaveArgs = z.object({
   context: z.string().min(1),
   harness_source: z.string().optional(),
   model: z.string().optional(),
+  continues_session_id: z.string().optional(),
 });
 
 const LoadArgs = z.object({ id: z.string().min(4) });
@@ -51,6 +52,13 @@ export async function startMcpServer(): Promise<void> {
             model: {
               type: "string",
               description: "Model to use for token counting; defaults to claude-sonnet-4-5",
+            },
+            continues_session_id: {
+              type: "string",
+              description:
+                "Id (or prefix) of a prior session this one continues, for cumulative cross-harness " +
+                "handoff (e.g. picking up Codex work that itself continued from Claude Code). Omit for a " +
+                "fresh, unrelated session.",
             },
           },
           required: ["context"],
@@ -96,6 +104,16 @@ export async function startMcpServer(): Promise<void> {
       case "save_context": {
         const a = SaveArgs.parse(req.params.arguments);
         const model = (a.model ?? "claude-sonnet-4-5") as ModelId;
+
+        let parentSessionId: string | null = null;
+        if (a.continues_session_id) {
+          const parent = resolveSessionByIdOrPrefix(a.continues_session_id);
+          if (!parent) {
+            return textResult({ error: `continues_session_id ${a.continues_session_id}: no matching session found` }, true);
+          }
+          parentSessionId = parent.id;
+        }
+
         const id = randomUUID();
         const name = a.name ?? `mcp-session-${new Date().toISOString().slice(0, 16)}`;
         const tokens = countTokens(a.context, model);
@@ -105,17 +123,13 @@ export async function startMcpServer(): Promise<void> {
           harnessSource: a.harness_source ?? null,
           rawContext: a.context,
           rawTokens: tokens,
+          parentSessionId,
         });
-        return textResult({ id, name, tokens });
+        return textResult({ id, name, tokens, continues: parentSessionId });
       }
       case "load_context": {
         const a = LoadArgs.parse(req.params.arguments);
-        let s = getSession(a.id);
-        if (!s) {
-          const rows = listSessions(500);
-          const match = rows.find((r) => r.id.startsWith(a.id));
-          if (match) s = match;
-        }
+        const s = resolveSessionByIdOrPrefix(a.id);
         if (!s) return textResult({ error: `session ${a.id} not found` }, true);
         return textResult({
           id: s.id,
@@ -152,6 +166,12 @@ export async function startMcpServer(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+function resolveSessionByIdOrPrefix(idOrPrefix: string) {
+  const exact = getSession(idOrPrefix);
+  if (exact) return exact;
+  return listSessions(500).find((r) => r.id.startsWith(idOrPrefix));
 }
 
 function textResult(payload: unknown, isError = false) {
