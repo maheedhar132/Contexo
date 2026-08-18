@@ -28,7 +28,7 @@ const ListArgs = z.object({ limit: z.number().int().positive().max(200).optional
 
 export async function startMcpServer(): Promise<void> {
   const server = new Server(
-    { name: "portal", version: "0.1.0" },
+    { name: "contexo", version: "0.1.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -37,7 +37,7 @@ export async function startMcpServer(): Promise<void> {
       {
         name: "save_context",
         description:
-          "Save the current AI session context to Portal so it can be handed off to another harness later. Returns a session id.",
+          "Save the current AI session context to Contexo so it can be handed off to another harness later. Returns a session id.",
         inputSchema: {
           type: "object",
           properties: {
@@ -81,7 +81,7 @@ export async function startMcpServer(): Promise<void> {
       },
       {
         name: "list_sessions",
-        description: "List recent Portal sessions, newest first.",
+        description: "List recent Contexo sessions, newest first.",
         inputSchema: {
           type: "object",
           properties: { limit: { type: "number", default: 20 } },

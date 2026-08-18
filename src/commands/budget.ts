@@ -9,7 +9,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function budgetShow(): void {
   const daily = getBudget("daily");
   const spent = spendSince(Date.now() - DAY_MS);
-  console.log(kleur.bold("Portal budget"));
+  console.log(kleur.bold("Contexo budget"));
   console.log(`  ${kleur.dim("daily cap")}   ${daily === null ? kleur.dim("(unset)") : formatUsd(daily)}`);
   console.log(`  ${kleur.dim("last 24h")}    ${formatUsd(spent)}`);
   if (daily !== null) {
@@ -26,8 +26,8 @@ export function budgetSet(daily: number): void {
   console.log(kleur.green("✓") + ` Daily cap set to ${formatUsd(daily)}`);
   console.log(
     kleur.dim(
-      "  Note: enforcement requires wrapping your agent with `portal run -- <cmd>` " +
-        "so Portal can watch spend and kill the process at the cap.",
+      "  Note: enforcement requires wrapping your agent with `contexo run -- <cmd>` " +
+        "so Contexo can watch spend and kill the process at the cap.",
     ),
   );
 }
@@ -38,10 +38,10 @@ export function budgetSet(daily: number): void {
 // provider-side proxy for exact enforcement.
 export function budgetRun(argv: string[]): Promise<number> {
   return new Promise((resolve, reject) => {
-    if (argv.length === 0) return reject(new Error("Usage: portal run -- <command> [args...]"));
+    if (argv.length === 0) return reject(new Error("Usage: contexo run -- <command> [args...]"));
     const cap = getBudget("daily");
     if (cap === null) {
-      console.log(kleur.yellow("!") + " No daily cap set. Running unbounded. Set one: portal budget --daily 5");
+      console.log(kleur.yellow("!") + " No daily cap set. Running unbounded. Set one: contexo budget --daily 5");
     }
     const [cmd, ...rest] = argv as [string, ...string[]];
     const child = spawn(cmd, rest, { stdio: ["inherit", "pipe", "pipe"], shell: false });

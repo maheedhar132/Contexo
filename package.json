@@ -1,5 +1,5 @@
 {
-  "name": "portalctx",
+  "name": "contexo",
   "version": "0.1.0",
   "description": "Portable AI context and cost control across every AI coding harness.",
   "keywords": [
@@ -16,7 +16,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "portal": "./dist/cli.js"
+    "contexo": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -38,7 +38,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {
     "node": ">=20"

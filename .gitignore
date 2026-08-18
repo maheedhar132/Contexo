@@ -9,7 +9,12 @@ coverage/
 .idea/
 *.tsbuildinfo
 
-# Local Portal data (never commit)
-.portal/
-portal.db
-portal.db-*
+# Local Contexo data (never commit)
+.contexo/
+contexo.db
+contexo.db-*
+
+# Pro tier — licensing, auto-pause/resume, monetization infra, landing page,
+# launch docs. Deliberately kept out of the open-source publish; see
+# pro/README.md for what's in here and how to bring it back.
+/pro/

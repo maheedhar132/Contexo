@@ -12,13 +12,13 @@ import type { ModelId } from "./cost.js";
 const program = new Command();
 
 program
-  .name("portal")
+  .name("contexo")
   .description("Portable AI context and cost control across every AI coding harness.")
   .version("0.1.0");
 
 program
   .command("save")
-  .description("Save the current context as a Portal session")
+  .description("Save the current context as a Contexo session")
   .option("-n, --name <name>", "Session name")
   .option("-f, --file <path>", "Read context from file")
   .option("-t, --text <text>", "Inline context string")
@@ -92,7 +92,7 @@ budget
 
 program
   .command("run")
-  .description("Run a wrapped agent with hard budget enforcement: portal run -- <cmd> [args...]")
+  .description("Run a wrapped agent with hard budget enforcement: contexo run -- <cmd> [args...]")
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async (_opts, cmd) => {
@@ -103,7 +103,7 @@ program
 
 program
   .command("mcp")
-  .description("Start the Portal MCP server on stdio (attach from Claude Code, Cursor, Cline, etc.)")
+  .description("Start the Contexo MCP server on stdio (attach from Claude Code, Cursor, Cline, etc.)")
   .action(async () => {
     await startMcpServer();
   });

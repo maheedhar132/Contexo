@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { DB_PATH, ensurePortalHome } from "./paths.js";
+import { DB_PATH, ensureContexoHome } from "./paths.js";
 
 export type SessionRow = {
   id: string;
@@ -28,13 +28,20 @@ let cached: Database.Database | null = null;
 
 export function db(): Database.Database {
   if (cached) return cached;
-  ensurePortalHome();
+  ensureContexoHome();
   const conn = new Database(DB_PATH);
   conn.pragma("journal_mode = WAL");
   conn.pragma("foreign_keys = ON");
   migrate(conn);
   cached = conn;
   return conn;
+}
+
+// For tests: releases the file handle so a temp CONTEXO_HOME dir can be
+// removed cleanly (Windows keeps WAL-mode SQLite files locked otherwise).
+export function closeDb(): void {
+  cached?.close();
+  cached = null;
 }
 
 function migrate(conn: Database.Database): void {

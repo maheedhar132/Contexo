@@ -37,7 +37,7 @@ export async function compressContext(rawContext: string, apiKey?: string): Prom
   if (!key) {
     throw new Error(
       "Compression requires ANTHROPIC_API_KEY. Set it in your environment, or pass --api-key.\n" +
-        "Portal Pro will remove this requirement — compression runs on our servers.",
+        "Contexo Pro will remove this requirement — compression runs on our servers.",
     );
   }
 

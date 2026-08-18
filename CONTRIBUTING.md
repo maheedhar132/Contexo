@@ -1,6 +1,6 @@
-# Contributing to Portal
+# Contributing to Contexo
 
-Portal is a small, focused CLI. PRs are welcome but the surface area is intentionally kept tight.
+Contexo is a small, focused CLI. PRs are welcome but the surface area is intentionally kept tight.
 
 ## What we want
 
@@ -12,7 +12,7 @@ Portal is a small, focused CLI. PRs are welcome but the surface area is intentio
 ## What we don't want (yet)
 
 - New commands beyond `save / sessions / show / delete / handoff / estimate / budget / run / mcp`. Extra surface belongs in Pro.
-- Cloud sync, team features, dashboards — those live in Portal Cloud (closed source).
+- Cloud sync, team features, dashboards — those live in Contexo Cloud (closed source).
 - Framework rewrites. This is a small CLI; keep it small.
 
 ## Dev loop

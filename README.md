@@ -1,44 +1,42 @@
-# Portal
+# Contexo
 
 **Portable AI context and cost control across every AI coding harness.**
 
-Stop paying twice. Portal saves your work in one harness (Claude Code, Codex, Cursor…) and hands it off to another in a single command — compressed, so the new session starts from the right place at near-zero token cost.
-
-> **Note.** The package is published to npm as [`portalctx`](https://www.npmjs.com/package/portalctx) because `portal` is taken. The CLI binary is still `portal`.
+Stop paying twice. Contexo saves your work in one harness (Claude Code, Codex, Cursor…) and hands it off to another in a single command — compressed, so the new session starts from the right place at near-zero token cost.
 
 ## Install
 
 ```bash
-npm i -g portalctx
+npm i -g contexo
 # or, one-off
-npx portalctx --help
+npx contexo --help
 ```
 
 ## 30-second tour
 
 ```bash
 # 1. Save the current session (paste a transcript or point at a file)
-portal save --file ./chat.md --name "auth refactor"
+contexo save --file ./chat.md --name "auth refactor"
 
 # 2. See what you've got
-portal sessions
+contexo sessions
 
 # 3. Hand off to another harness — compressed, ready to resume
-portal handoff cursor
+contexo handoff cursor
 
 # 4. Know the cost before you fire
-echo "Refactor this file to use zod" | portal estimate --all
+echo "Refactor this file to use zod" | contexo estimate --all
 
-# 5. Cap your daily spend and let Portal enforce it
-portal budget set 5.00
-portal run -- claude "fix the failing tests"
+# 5. Cap your daily spend and let Contexo enforce it
+contexo budget set 5.00
+contexo run -- claude "fix the failing tests"
 ```
 
-## What Portal actually does
+## What Contexo actually does
 
 - **Cross-harness handoff.** Save a session in one harness, resume in another with a compressed context that captures decisions, changes so far, and the next step. No re-explaining.
-- **Cost preflight.** `portal estimate` tokenizes your prompt against every supported model and shows what a run will cost *before* you send it.
-- **Hard budget cap.** `portal run` wraps your agent, watches spend in real time, and terminates the process at your daily cap. No more $200 surprises.
+- **Cost preflight.** `contexo estimate` tokenizes your prompt against every supported model and shows what a run will cost *before* you send it.
+- **Hard budget cap.** `contexo run` wraps your agent, watches spend in real time, and terminates the process at your daily cap. No more $200 surprises.
 - **Works with your existing tools.** Ships as an MCP server (Claude Code, Cursor, Cline, Windsurf) and as a config-file injector (Codex `AGENTS.md`, Claude `CLAUDE.md`, Cursor `.cursorrules`).
 - **Runs 100% offline in the free tier.** SQLite on your machine. No account required.
 
@@ -51,7 +49,7 @@ portal run -- claude "fix the failing tests"
        │ MCP        │ AGENTS.md│ MCP + .cursorrules
        ▼            ▼          ▼
    ┌──────────────────────────────────────────────┐
-   │  Portal CLI + MCP server (Node/TypeScript)   │  ← this repo (Apache 2.0)
+   │  Contexo CLI + MCP server (Node/TypeScript)  │  ← this repo (Apache 2.0)
    │  • local SQLite session store                │
    │  • tokenizers + cost table                   │
    │  • harness adapters                          │
@@ -60,7 +58,7 @@ portal run -- claude "fix the failing tests"
                       │ HTTPS (Pro tier, optional)
                       ▼
    ┌──────────────────────────────────────────────┐
-   │  Portal Cloud (closed, coming soon)          │
+   │  Contexo Cloud (closed, coming soon)         │
    │  • compression-as-a-service                  │
    │  • learned cost prediction                   │
    │  • cross-machine sync                        │
@@ -68,37 +66,37 @@ portal run -- claude "fix the failing tests"
    └──────────────────────────────────────────────┘
 ```
 
-## Wire Portal into Claude Code
+## Wire Contexo into Claude Code
 
 Add to your Claude Code MCP config:
 
 ```json
 {
   "mcpServers": {
-    "portal": { "command": "portal", "args": ["mcp"] }
+    "contexo": { "command": "contexo", "args": ["mcp"] }
   }
 }
 ```
 
 Claude Code now sees four tools: `save_context`, `load_context`, `estimate_cost`, `list_sessions`.
 
-## Wire Portal into Cursor
+## Wire Contexo into Cursor
 
 Cursor supports MCP the same way. In `~/.cursor/mcp.json`:
 
 ```json
-{ "mcpServers": { "portal": { "command": "portal", "args": ["mcp"] } } }
+{ "mcpServers": { "contexo": { "command": "contexo", "args": ["mcp"] } } }
 ```
 
-## Wire Portal into Codex
+## Wire Contexo into Codex
 
 Codex reads `AGENTS.md`. Run:
 
 ```bash
-portal handoff codex
+contexo handoff codex
 ```
 
-Portal writes a `<!-- portal:context:start -->` block into your project's `AGENTS.md`. Codex picks it up automatically. Re-running `handoff` replaces the block cleanly.
+Contexo writes a `<!-- contexo:context:start -->` block into your project's `AGENTS.md`. Codex picks it up automatically. Re-running `handoff` replaces the block cleanly.
 
 ## Cost estimation — honest numbers
 
@@ -109,9 +107,9 @@ Update the pricing table in [`src/cost.ts`](src/cost.ts) as providers change pri
 
 ## Compression, honestly
 
-Portal's compression sends your raw context to Anthropic Haiku with a fixed system prompt (see [`src/compress.ts`](src/compress.ts)). Cost is roughly **$0.001 per compression** on typical sessions.
+Contexo's compression sends your raw context to Anthropic Haiku with a fixed system prompt (see [`src/compress.ts`](src/compress.ts)). Cost is roughly **$0.001 per compression** on typical sessions.
 
-The free tier uses **your** `ANTHROPIC_API_KEY`. Portal Pro will move compression to our servers (better prompt, no key required, and no per-compression cost on your end).
+The free tier uses **your** `ANTHROPIC_API_KEY`. Contexo Pro will move compression to our servers (better prompt, no key required, and no per-compression cost on your end).
 
 **We do not claim "zero token" handoffs.** Loading context into a new session always costs input tokens. What you get:
 
@@ -145,4 +143,4 @@ Apache 2.0 — see [LICENSE](./LICENSE).
 
 ## Trademark
 
-"Portal" and the Portal logo are pending trademarks of the project maintainer. Forks and derivative works are welcome under the Apache 2.0 license, but must not use the "Portal" name or logo to identify themselves. See [TRADEMARK.md](./TRADEMARK.md).
+"Contexo" and the Contexo logo are pending trademarks of the project maintainer. Forks and derivative works are welcome under the Apache 2.0 license, but must not use the "Contexo" name or logo to identify themselves. See [TRADEMARK.md](./TRADEMARK.md).

@@ -4,7 +4,7 @@ import { listSessions, getSession, deleteSession } from "../db.js";
 export function sessionsList(): void {
   const rows = listSessions(20);
   if (rows.length === 0) {
-    console.log(kleur.dim("No sessions yet. Try: portal save --text \"your context\""));
+    console.log(kleur.dim("No sessions yet. Try: contexo save --text \"your context\""));
     return;
   }
   for (const r of rows) {

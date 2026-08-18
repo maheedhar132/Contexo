@@ -1,6 +1,6 @@
 import kleur from "kleur";
 import { getSession, listSessions, setCompressed } from "../db.js";
-import { getAdapter, wrapPortalBlock, type HarnessId } from "../adapters/index.js";
+import { getAdapter, wrapContexoBlock, type HarnessId } from "../adapters/index.js";
 import { compressContext } from "../compress.js";
 import { countTokens, formatUsd, type ModelId } from "../cost.js";
 
@@ -15,7 +15,7 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
   const cwd = opts.cwd ?? process.cwd();
   const sessionRow = resolveSession(opts.session);
   if (!sessionRow) {
-    console.log(kleur.red("No session found. Save one first: portal save --file <path>"));
+    console.log(kleur.red("No session found. Save one first: contexo save --file <path>"));
     process.exitCode = 1;
     return;
   }
@@ -46,9 +46,9 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
     }
   }
 
-  const block = wrapPortalBlock(body ?? sessionRow.raw_context, sessionRow.id, sessionRow.harness_source);
+  const block = wrapContexoBlock(body ?? sessionRow.raw_context, sessionRow.id, sessionRow.harness_source);
   const adapter = getAdapter(target);
-  const writtenTo = adapter.writePortalBlock(cwd, block);
+  const writtenTo = adapter.writeContexoBlock(cwd, block);
 
   console.log(
     kleur.green("✓") +
