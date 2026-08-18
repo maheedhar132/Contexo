@@ -8,6 +8,7 @@ coverage/
 .vscode/
 .idea/
 *.tsbuildinfo
+*.txt
 
 # Local Contexo data (never commit)
 .contexo/

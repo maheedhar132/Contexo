@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import kleur from "kleur";
 import { getBudget, setBudget, spendSince, recordRun } from "../db.js";
 import { formatUsd } from "../cost.js";
@@ -27,15 +27,37 @@ export function budgetSet(daily: number): void {
   console.log(
     kleur.dim(
       "  Note: enforcement requires wrapping your agent with `contexo run -- <cmd>` " +
-        "so Contexo can watch spend and kill the process at the cap.",
+        "so Contexo can watch spend and kill the process at the cap. See `contexo run --help` " +
+        "for the honest limits of this — it can only see cost the wrapped CLI prints to stdout/stderr.",
     ),
   );
 }
 
+// Kills the whole process tree, not just the immediate child — a wrapped
+// CLI that forks its own workers/subprocesses could otherwise keep spending
+// after we've "terminated" it.
+function killProcessTree(child: ChildProcess): void {
+  if (child.pid === undefined) return;
+  if (process.platform === "win32") {
+    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+  } else {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      child.kill("SIGTERM");
+    }
+  }
+}
+
 // Best-effort enforcement for the free tier: we tail stderr/stdout for
 // well-known cost lines emitted by common agent CLIs, add them up, and kill
-// the child when we cross the daily cap. Pro tier replaces this with a proper
-// provider-side proxy for exact enforcement.
+// the child when we cross the daily cap. This is fundamentally reactive
+// (we only see cost after the wrapped CLI prints it) and depends on the
+// wrapped CLI's output format — if it never prints a recognizable `$X.XX`
+// line, we cannot see its spend, and the cap silently does nothing. We
+// surface that failure loudly (see the post-close warning below) instead
+// of pretending enforcement happened. Pro tier replaces this with a proper
+// provider-side proxy for exact, format-independent enforcement.
 export function budgetRun(argv: string[]): Promise<number> {
   return new Promise((resolve, reject) => {
     if (argv.length === 0) return reject(new Error("Usage: contexo run -- <command> [args...]"));
@@ -44,10 +66,15 @@ export function budgetRun(argv: string[]): Promise<number> {
       console.log(kleur.yellow("!") + " No daily cap set. Running unbounded. Set one: contexo budget --daily 5");
     }
     const [cmd, ...rest] = argv as [string, ...string[]];
-    const child = spawn(cmd, rest, { stdio: ["inherit", "pipe", "pipe"], shell: false });
+    const child = spawn(cmd, rest, {
+      stdio: ["inherit", "pipe", "pipe"],
+      shell: false,
+      detached: process.platform !== "win32",
+    });
 
     const spent = { total: spendSince(Date.now() - DAY_MS) };
     const runId = randomUUID();
+    let sawAnyCost = false;
 
     const scanFor = (chunk: Buffer) => {
       const text = chunk.toString("utf8");
@@ -56,6 +83,7 @@ export function budgetRun(argv: string[]): Promise<number> {
       for (const m of matches) {
         const amt = Number.parseFloat(m[1]!);
         if (!Number.isNaN(amt) && amt < 100) {
+          sawAnyCost = true;
           spent.total += amt;
           recordRun({
             id: `${runId}-${Date.now()}`,
@@ -73,7 +101,7 @@ export function budgetRun(argv: string[]): Promise<number> {
           kleur.red("\n! Budget cap hit ") +
             kleur.dim(`(${formatUsd(spent.total)} >= ${formatUsd(cap)}). Terminating.`),
         );
-        child.kill("SIGTERM");
+        killProcessTree(child);
       }
     };
 
@@ -82,7 +110,17 @@ export function budgetRun(argv: string[]): Promise<number> {
       process.stderr.write(c);
       scanFor(c);
     });
-    child.on("close", (code) => resolve(code ?? 0));
+    child.on("close", (code) => {
+      if (cap !== null && !sawAnyCost) {
+        console.log(
+          kleur.yellow("\n! ") +
+            "No cost output detected from this run — Contexo could not verify spend, " +
+            "so the budget cap was NOT enforced. This CLI's output format isn't recognized " +
+            "(see `contexo budget set` for details).",
+        );
+      }
+      resolve(code ?? 0);
+    });
     child.on("error", reject);
   });
 }

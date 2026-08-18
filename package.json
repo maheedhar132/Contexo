@@ -1,6 +1,6 @@
 {
-  "name": "contexo",
-  "version": "0.1.0",
+  "name": "@maheedhar132/contexo",
+  "version": "0.2.0",
   "description": "Portable AI context and cost control across every AI coding harness.",
   "keywords": [
     "ai",
@@ -16,7 +16,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
-    "contexo": "./dist/cli.js"
+    "contexo": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
