@@ -66,26 +66,54 @@ contexo run -- claude "fix the failing tests"
    └──────────────────────────────────────────────┘
 ```
 
-## Wire Contexo into Claude Code
+## Install as a plugin — no `npm install` required
 
-Add to your Claude Code MCP config:
+Contexo ships as a plugin, not just an npm package. The MCP server launches
+via `npx`, so a harness's own plugin manager can pull and run it on demand —
+you never have to `npm i -g` anything yourself.
+
+**Claude Code** (uses its own plugin/marketplace format, `.claude-plugin/`):
+
+```
+/plugin marketplace add maheedhar132/Contexo
+/plugin install contexo
+```
+
+**Codex, Cursor, GitHub Copilot, VS Code, Kiro, ChatGPT** (via the
+cross-vendor [Agent Plugins 1.0](https://github.com/agentplugins/agent-plugins-spec)
+standard — `plugin.json` + `mcp.json` + `skills/` at the repo root): add
+this repo as a plugin source in whichever of those clients you use; each
+reads the same manifest.
+
+Either path gives the agent four tools (`save_context`, `load_context`,
+`estimate_cost`, `list_sessions`) plus a `contexo` skill describing when to
+use them and when to fall back to the CLI-only commands (`handoff`,
+`budget`, `run`) that can't run as MCP tools since they write files or wrap
+external processes.
+
+## Wire Contexo into Claude Code manually
+
+If you'd rather configure the MCP server by hand instead of installing the
+plugin, add to your Claude Code MCP config:
 
 ```json
 {
   "mcpServers": {
-    "contexo": { "command": "contexo", "args": ["mcp"] }
+    "contexo": { "command": "npx", "args": ["-y", "@maheedhar132/contexo", "mcp"] }
   }
 }
 ```
 
+(Already have it installed globally? `{ "command": "contexo", "args": ["mcp"] }` works too.)
+
 Claude Code now sees four tools: `save_context`, `load_context`, `estimate_cost`, `list_sessions`.
 
-## Wire Contexo into Cursor
+## Wire Contexo into Cursor manually
 
 Cursor supports MCP the same way. In `~/.cursor/mcp.json`:
 
 ```json
-{ "mcpServers": { "contexo": { "command": "contexo", "args": ["mcp"] } } }
+{ "mcpServers": { "contexo": { "command": "npx", "args": ["-y", "@maheedhar132/contexo", "mcp"] } } }
 ```
 
 ## Wire Contexo into Codex
@@ -93,7 +121,7 @@ Cursor supports MCP the same way. In `~/.cursor/mcp.json`:
 Codex reads `AGENTS.md`. Run:
 
 ```bash
-contexo handoff codex
+npx -y @maheedhar132/contexo handoff codex
 ```
 
 Contexo writes a `<!-- contexo:context:start -->` block into your project's `AGENTS.md`. Codex picks it up automatically. Re-running `handoff` replaces the block cleanly.

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "contexo",
+  "version": "0.2.0",
+  "description": "Portable AI context and cost control across every AI coding harness.",
+  "author": {
+    "name": "maheedhar132",
+    "url": "https://github.com/maheedhar132"
+  },
+  "homepage": "https://github.com/maheedhar132/Contexo",
+  "repository": "https://github.com/maheedhar132/Contexo",
+  "license": "Apache-2.0",
+  "keywords": ["ai", "mcp", "context", "cost", "cli", "claude-code", "cursor", "codex"]
+}

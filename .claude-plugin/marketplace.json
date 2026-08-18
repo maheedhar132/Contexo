@@ -1,0 +1,14 @@
+{
+  "name": "contexo",
+  "owner": {
+    "name": "maheedhar132",
+    "url": "https://github.com/maheedhar132"
+  },
+  "plugins": [
+    {
+      "name": "contexo",
+      "source": "./",
+      "description": "Portable AI context and cost control across every AI coding harness."
+    }
+  ]
+}
