@@ -6,6 +6,7 @@ import { handoffCommand } from "./commands/handoff.js";
 import { estimateCommand } from "./commands/estimate.js";
 import { budgetRun, budgetSet, budgetShow } from "./commands/budget.js";
 import { startMcpServer } from "./mcp.js";
+import { VERSION } from "./version.js";
 import type { HarnessId } from "./adapters/index.js";
 import type { ModelId } from "./cost.js";
 
@@ -14,7 +15,7 @@ const program = new Command();
 program
   .name("contexo")
   .description("Portable AI context and cost control across every AI coding harness.")
-  .version("0.1.0");
+  .version(VERSION);
 
 program
   .command("save")

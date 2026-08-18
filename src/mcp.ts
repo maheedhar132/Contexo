@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { getSession, listSessions, saveSession } from "./db.js";
 import { countTokens, estimateCost, listModels, type ModelId } from "./cost.js";
+import { VERSION } from "./version.js";
 
 const SaveArgs = z.object({
   name: z.string().optional(),
@@ -28,7 +29,7 @@ const ListArgs = z.object({ limit: z.number().int().positive().max(200).optional
 
 export async function startMcpServer(): Promise<void> {
   const server = new Server(
-    { name: "contexo", version: "0.1.0" },
+    { name: "contexo", version: VERSION },
     { capabilities: { tools: {} } },
   );
 
