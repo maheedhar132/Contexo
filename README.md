@@ -7,10 +7,12 @@ Stop paying twice. Contexo saves your work in one harness (Claude Code, Codex, C
 ## Install
 
 ```bash
-npm i -g contexo
+npm i -g @maheedhar132/contexo
 # or, one-off
-npx contexo --help
+npx -y @maheedhar132/contexo --help
 ```
+
+The command is `contexo` either way — the package name is scoped, the CLI binary isn't.
 
 ## 30-second tour
 
@@ -159,7 +161,8 @@ The free tier uses **your** `ANTHROPIC_API_KEY`. Contexo Pro will move compressi
 ## Development
 
 ```bash
-git clone <this repo>
+git clone https://github.com/maheedhar132/Contexo.git
+cd Contexo
 npm install
 npm run build
 node dist/cli.js --help
