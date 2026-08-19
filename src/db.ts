@@ -192,3 +192,26 @@ export function getBudget(scope: "daily" | "weekly" | "monthly"): number | null 
     .get(scope) as { limit_usd: number } | undefined;
   return row?.limit_usd ?? null;
 }
+
+export type StatsSummary = {
+  sessionsCompressed: number;
+  rawTokens: number;
+  compressedTokens: number;
+  tokensSaved: number;
+};
+
+// Only counts sessions that were actually compressed (compressed_tokens set) —
+// an uncompressed save hasn't "saved" anything yet.
+export function getStatsSummary(): StatsSummary {
+  const row = db()
+    .prepare(
+      `SELECT
+         COUNT(*) AS sessionsCompressed,
+         COALESCE(SUM(raw_tokens), 0) AS rawTokens,
+         COALESCE(SUM(compressed_tokens), 0) AS compressedTokens
+       FROM sessions
+       WHERE compressed_tokens IS NOT NULL`,
+    )
+    .get() as { sessionsCompressed: number; rawTokens: number; compressedTokens: number };
+  return { ...row, tokensSaved: row.rawTokens - row.compressedTokens };
+}

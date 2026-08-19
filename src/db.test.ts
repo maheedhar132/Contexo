@@ -62,6 +62,29 @@ describe("session chains", () => {
   });
 });
 
+describe("stats summary", () => {
+  it("sums raw/compressed tokens only across compressed sessions", async () => {
+    const db = await import("./db.js");
+    expect(db.getStatsSummary()).toEqual({
+      sessionsCompressed: 0,
+      rawTokens: 0,
+      compressedTokens: 0,
+      tokensSaved: 0,
+    });
+
+    db.saveSession({ id: "u1", name: "uncompressed", harnessSource: null, rawContext: "a", rawTokens: 100 });
+    db.saveSession({ id: "c1", name: "compressed", harnessSource: null, rawContext: "b", rawTokens: 200 });
+    db.setCompressed("c1", "brief", 20);
+
+    expect(db.getStatsSummary()).toEqual({
+      sessionsCompressed: 1,
+      rawTokens: 200,
+      compressedTokens: 20,
+      tokensSaved: 180,
+    });
+  });
+});
+
 describe("budgets and runs", () => {
   it("sets/gets a budget and sums spend since a timestamp", async () => {
     const db = await import("./db.js");

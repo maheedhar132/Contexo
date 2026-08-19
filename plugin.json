@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "contexo",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Portable AI context and cost control across every AI coding harness.",
   "author": {
     "name": "maheedhar132",

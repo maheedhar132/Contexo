@@ -37,7 +37,10 @@ Contexo gives you five MCP tools backed by a local SQLite store at `~/.contexo`:
 - **estimate_cost** — tokenize a prompt against a given model and return
   input/output cost estimates. Use this before sending an unusually large
   prompt, or whenever the user asks "how much will this cost."
-- **list_sessions** — list recent saved sessions, newest first.
+- **list_sessions** — list recent saved sessions, newest first. Also
+  returns `savings_summary` (sessions compressed, tokens saved, approximate
+  USD saved, all local to this machine) — use it if the user asks how much
+  Contexo has saved them; no separate tool call needed.
 
 ## The self-compression path (default — no API key needed)
 
@@ -63,6 +66,25 @@ recomputes fresh — those two cases are exactly the ones that need
 reconciling against state the cache can't know about. So the terminal path
 only skips the API call for the simplest case: one session, no prior
 handoff in the target file yet.
+
+## Save proactively — don't wait to be asked (auto-compact)
+
+There is no reliable "the session is about to close" signal an MCP server can
+see, so the mitigation lives here, in your own judgment: call `save_context`
+(with `compressed_context`, per above — it costs nothing extra) *before* the
+user has to ask, not just when they explicitly say they're switching tools.
+Do this when you notice any of:
+
+- The conversation has grown long or the task has clearly reached a
+  checkpoint (a decision made, a change landed, a natural pause).
+- You sense the session is wrapping up — the user is signaling they're done
+  for now, or you're approaching a context limit.
+- The user mentions closing the terminal, restarting, or coming back later.
+
+Saving early and re-saving as things change is cheap and reversible; losing
+an uncompressed session because nobody called `save_context` in time is not.
+This is the only real form of "auto-compact" available without a harness-level
+lifecycle hook — treat it as a standing instruction, not a one-off reminder.
 
 ## When there's no active Contexo session yet
 

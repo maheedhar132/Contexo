@@ -6,8 +6,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { getSession, listSessions, saveSession, setCompressed } from "./db.js";
-import { countTokens, estimateCost, listModels, type ModelId } from "./cost.js";
+import { getSession, listSessions, saveSession, setCompressed, getStatsSummary } from "./db.js";
+import { countTokens, estimateCost, listModels, usdSavedForTokens, type ModelId } from "./cost.js";
 import { VERSION } from "./version.js";
 import { BRIEF_FORMAT } from "./compress.js";
 import { getAdapter, wrapContexoBlock, type HarnessId } from "./adapters/index.js";
@@ -115,7 +115,10 @@ export async function startMcpServer(): Promise<void> {
       },
       {
         name: "list_sessions",
-        description: "List recent Contexo sessions, newest first.",
+        description:
+          "List recent Contexo sessions, newest first. Also returns savings_summary: local, approximate " +
+          "tokens/$ saved across every compressed session on this machine — use it if the user asks how much " +
+          "Contexo has saved them.",
         inputSchema: {
           type: "object",
           properties: { limit: { type: "number", default: 20 } },
@@ -210,7 +213,15 @@ export async function startMcpServer(): Promise<void> {
           compressed_tokens: r.compressed_tokens,
           updated_at: r.updated_at,
         }));
-        return textResult(rows);
+        const summary = getStatsSummary();
+        return textResult({
+          sessions: rows,
+          savings_summary: {
+            sessions_compressed: summary.sessionsCompressed,
+            tokens_saved: summary.tokensSaved,
+            usd_saved_approx: usdSavedForTokens(summary.tokensSaved),
+          },
+        });
       }
       case "write_handoff": {
         const a = WriteHandoffArgs.parse(req.params.arguments);

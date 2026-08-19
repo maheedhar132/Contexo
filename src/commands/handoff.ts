@@ -2,7 +2,7 @@ import kleur from "kleur";
 import { getSession, listSessions, setCompressed, getSessionChain } from "../db.js";
 import { getAdapter, wrapContexoBlock, extractContexoBlockBody, type HarnessId } from "../adapters/index.js";
 import { compressContext, buildCumulativeRawContext } from "../compress.js";
-import { countTokens, formatUsd, type ModelId } from "../cost.js";
+import { countTokens, formatUsd, usdSavedForTokens, type ModelId } from "../cost.js";
 
 export type HandoffOptions = {
   session?: string;
@@ -89,6 +89,14 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
       `  ${kleur.dim("handoff")}     ${compressedTokens.toLocaleString()} tokens` +
       (savedPct ? kleur.green(`  (-${savedPct}%)`) : ""),
   );
+  if (rawTokensTotal > compressedTokens) {
+    const usdSaved = usdSavedForTokens(rawTokensTotal - compressedTokens);
+    console.log(
+      kleur.dim(
+        `  Saved ~${(rawTokensTotal - compressedTokens).toLocaleString()} tokens (~${formatUsd(usdSaved)}) vs. replaying full history.`,
+      ),
+    );
+  }
   console.log(kleur.dim(`\nOpen ${adapter.displayName} in this folder to continue with full context.`));
 }
 

@@ -94,6 +94,16 @@ export function listModels(): ModelId[] {
   return Object.keys(PRICING) as ModelId[];
 }
 
+// Reference model for "$ saved" figures: avoided input tokens are priced at
+// this model's input rate, since it's the default assumption used elsewhere
+// (estimate_cost) for a typical daily-driver model. Approximate by design —
+// same "honest numbers" framing as estimateCost's isApproximate flag.
+const SAVINGS_REFERENCE_MODEL: ModelId = "claude-sonnet-4-5";
+
+export function usdSavedForTokens(tokens: number, model: ModelId = SAVINGS_REFERENCE_MODEL): number {
+  return (tokens / 1_000_000) * PRICING[model].price.input;
+}
+
 export function formatUsd(n: number): string {
   if (n < 0.01) return `$${n.toFixed(4)}`;
   if (n < 1) return `$${n.toFixed(3)}`;

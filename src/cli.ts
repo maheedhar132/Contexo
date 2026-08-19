@@ -4,6 +4,7 @@ import { saveCommand } from "./commands/save.js";
 import { sessionsList, sessionShow, sessionDelete } from "./commands/sessions.js";
 import { handoffCommand } from "./commands/handoff.js";
 import { estimateCommand } from "./commands/estimate.js";
+import { statsCommand } from "./commands/stats.js";
 import { budgetRun, budgetSet, budgetShow } from "./commands/budget.js";
 import { startMcpServer } from "./mcp.js";
 import { VERSION } from "./version.js";
@@ -82,6 +83,11 @@ program
       all: Boolean(opts.all),
     });
   });
+
+program
+  .command("stats")
+  .description("Show approximately how much Contexo has saved you, locally")
+  .action(() => statsCommand());
 
 const budget = program.command("budget").description("View or set spending budget");
 budget

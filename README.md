@@ -4,6 +4,18 @@
 
 Stop paying twice. Contexo saves your work in one harness (Claude Code, Codex, Cursor…) and hands it off to another in a single command — compressed, so the new session starts from the right place at near-zero token cost.
 
+<p align="center">
+  <img src="assets/contexo-handoff.gif" alt="Contexo saving a session in Claude Code, compressing it, and a brand-new session picking up full context automatically with zero re-explaining" width="800">
+</p>
+
+**A brand-new Claude Code session, given a prompt that never mentions the file it's about to edit, already knew.** `CLAUDE.md` carried the context — no re-explaining, ~50% fewer tokens than replaying the raw session.
+
+<p align="center">
+  <img src="assets/contexo-budget-cap.gif" alt="Contexo killing a runaway agent process automatically the instant it crosses the daily budget cap" width="800">
+</p>
+
+**A wrapped agent that just keeps spending gets killed the instant it crosses your cap.** No $200 surprise at the end of the month.
+
 ## Install
 
 ```bash
@@ -32,12 +44,17 @@ echo "Refactor this file to use zod" | contexo estimate --all
 # 5. Cap your daily spend and let Contexo enforce it
 contexo budget set 5.00
 contexo run -- claude "fix the failing tests"
+
+# 6. See what you've saved so far
+contexo stats
 ```
 
 ## What Contexo actually does
 
 - **Cross-harness handoff.** Save a session in one harness, resume in another with a compressed context that captures decisions, changes so far, and the next step. No re-explaining.
 - **Cumulative, diff-aware handoffs.** Chain sessions across a whole journey with `contexo save --continues <id>` — Claude Code → Codex → Cursor — and `handoff` compresses the *entire* chain, not just the latest hop. It also reads whatever handoff is already sitting in the target file and reconciles against it, so a decision you reversed three hops ago doesn't get confidently restated as current.
+- **Auto-compact.** No harness gives an MCP server a "the session is about to close" event, so Contexo's `skill` instructs the agent to call `save_context` proactively — at natural checkpoints, when a session is clearly wrapping up, or as it approaches a context limit — instead of waiting to be asked. See [Auto-compact](#auto-compact) below.
+- **Know what you saved.** `contexo stats` (and the MCP `list_sessions` tool's `savings_summary`) shows approximately how many tokens and dollars Contexo has saved you, locally, no account required.
 - **Dead ends carry forward.** The brief has a dedicated section for approaches that were tried and abandoned, with why — the single biggest source of wasted agent time is re-attempting something already ruled out. Unlike Decisions, Dead ends accumulate across every hop in a chain instead of being overwritten.
 - **Cost preflight.** `contexo estimate` tokenizes your prompt against every supported model and shows what a run will cost *before* you send it.
 - **Hard budget cap.** `contexo run` wraps your agent, watches spend in real time, and terminates the process at your daily cap. No more $200 surprises.
@@ -155,12 +172,44 @@ Contexo Pro will remove even this fallback's key requirement by running compress
 - Cache-friendly single block (Anthropic prompt caching gives 90% discount on reuse within TTL).
 - Zero re-onboarding cost — the new agent doesn't have to ask 20 clarifying questions.
 
+## Auto-compact
+
+There's no cross-harness "session is about to close" event Contexo can listen
+for — no MCP server gets pushed that signal, and Contexo has no background
+daemon watching your terminal. So auto-compact is handled the only way that
+actually works everywhere: the `contexo` skill (`skills/contexo/SKILL.md`)
+tells the agent to call `save_context` proactively — at checkpoints, when the
+task looks like it's wrapping up, or as context grows long — rather than
+waiting for you to say "save this." Since `save_context` accepts your own
+`compressed_context` and costs nothing extra to call, there's no reason for
+the agent to wait.
+
+If your harness supports lifecycle hooks (Claude Code does, via
+`SessionEnd`/`Stop` hooks in `.claude/settings.json`), you can additionally
+wire a raw-save fallback so *something* always gets persisted even if the
+agent didn't proactively save:
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "npx -y @maheedhar132/contexo save --file -" }] }
+    ]
+  }
+}
+```
+
+This is a best-effort fallback, not a substitute — a hook can only persist
+raw text, not a compressed brief (that needs the agent's own reasoning), and
+no equivalent hook exists in Codex or Cursor today. The skill-driven proactive
+save above is what actually covers every harness.
+
 ## Pricing (planned)
 
 | Tier | Price | Contents |
 |---|---|---|
-| **Free** (this repo) | $0 | Local everything: save/load, MCP server, adapters, budget cap, cost estimator, compression via your API key |
-| **Pro** | $9/mo | Cloud sync across machines (E2E encrypted), compression-as-a-service, learned cost model, budget alerts, session search |
+| **Free** (this repo) | $0 | Local everything: save/load, MCP server, adapters, budget cap, cost estimator, compression via your API key, local `contexo stats` savings summary |
+| **Pro** | $9/mo | Cloud sync across machines (E2E encrypted), compression-as-a-service, learned cost model, budget alerts, session search, a hosted "$ saved" dashboard aggregating stats across every machine/session |
 | **Team** | $29/user/mo | Shared team context, team-wide budgets, dashboards, SSO |
 | **Enterprise** | from $2K/mo | Self-hosted, SOC 2 path, SIEM exports (Dynatrace/Datadog/Splunk), custom skill packs |
 
