@@ -14,3 +14,10 @@ jobs:
           plugin_dir: "."
           min_score: 80
           fail_on_severity: high
+          # Only file/update the catalog submission issue from a real push to
+          # master, never from a PR (forked PRs don't get repo secrets, and we
+          # don't want every branch push opening/touching the issue).
+          submission_enabled: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+          submission_score_threshold: 80
+          submission_token: ${{ secrets.AWESOME_SUBMISSION_TOKEN }}
+          submission_repos: hashgraph-online/awesome-ai-plugins
