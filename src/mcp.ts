@@ -6,9 +6,11 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { getSession, listSessions, saveSession } from "./db.js";
+import { getSession, listSessions, saveSession, setCompressed } from "./db.js";
 import { countTokens, estimateCost, listModels, type ModelId } from "./cost.js";
 import { VERSION } from "./version.js";
+import { BRIEF_FORMAT } from "./compress.js";
+import { getAdapter, wrapContexoBlock, type HarnessId } from "./adapters/index.js";
 
 const SaveArgs = z.object({
   name: z.string().optional(),
@@ -16,6 +18,7 @@ const SaveArgs = z.object({
   harness_source: z.string().optional(),
   model: z.string().optional(),
   continues_session_id: z.string().optional(),
+  compressed_context: z.string().optional(),
 });
 
 const LoadArgs = z.object({ id: z.string().min(4) });
@@ -28,6 +31,13 @@ const EstimateArgs = z.object({
 
 const ListArgs = z.object({ limit: z.number().int().positive().max(200).optional() });
 
+const WriteHandoffArgs = z.object({
+  target: z.enum(["claude-code", "codex", "cursor"]),
+  body: z.string().min(1),
+  session_id: z.string().optional(),
+  cwd: z.string().optional(),
+});
+
 export async function startMcpServer(): Promise<void> {
   const server = new Server(
     { name: "contexo", version: VERSION },
@@ -39,7 +49,11 @@ export async function startMcpServer(): Promise<void> {
       {
         name: "save_context",
         description:
-          "Save the current AI session context to Contexo so it can be handed off to another harness later. Returns a session id.",
+          "Save the current AI session context to Contexo so it can be handed off to another harness later. Returns a session id. " +
+          "You (the calling agent) already have model access — compress the context yourself and pass it as " +
+          "compressed_context instead of relying on Contexo to call an LLM separately. Contexo only falls back to its " +
+          "own Anthropic API call (requiring ANTHROPIC_API_KEY) when handoff happens outside any agent, e.g. a bare " +
+          "terminal run of `contexo handoff`.",
         inputSchema: {
           type: "object",
           properties: {
@@ -59,6 +73,17 @@ export async function startMcpServer(): Promise<void> {
                 "Id (or prefix) of a prior session this one continues, for cumulative cross-harness " +
                 "handoff (e.g. picking up Codex work that itself continued from Claude Code). Omit for a " +
                 "fresh, unrelated session.",
+            },
+            compressed_context: {
+              type: "string",
+              description:
+                "Optional: your own compression of `context`, written in this exact format so it's " +
+                "interchangeable with Contexo's own compression:\n\n" +
+                BRIEF_FORMAT +
+                "\n\nIf the target harness's config file (CLAUDE.md/AGENTS.md/.cursorrules) already has a " +
+                "Contexo handoff block, read it yourself first and reconcile against it: carry Dead ends " +
+                "forward always, and don't restate a superseded Decision as current. If you provide this, " +
+                "Contexo stores it directly — no separate API call happens.",
             },
           },
           required: ["context"],
@@ -96,6 +121,27 @@ export async function startMcpServer(): Promise<void> {
           properties: { limit: { type: "number", default: 20 } },
         },
       },
+      {
+        name: "write_handoff",
+        description:
+          "Write a handoff brief directly into another harness's config file (CLAUDE.md / AGENTS.md / .cursorrules) " +
+          "— the whole point is doing this without Contexo ever calling an LLM. You compress and reconcile the brief " +
+          "yourself (see save_context's compressed_context guidance for the format and diffing rules), then pass the " +
+          "finished text here as `body` and Contexo just writes it. No ANTHROPIC_API_KEY involved anywhere in this path.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            target: { type: "string", enum: ["claude-code", "codex", "cursor"], description: "Harness to hand off to" },
+            body: { type: "string", description: "The finished, already-compressed handoff brief text to write" },
+            session_id: {
+              type: "string",
+              description: "Session id (or prefix) this handoff represents; defaults to the most recent session",
+            },
+            cwd: { type: "string", description: "Project directory to write into; defaults to the server's cwd" },
+          },
+          required: ["target", "body"],
+        },
+      },
     ],
   }));
 
@@ -125,7 +171,14 @@ export async function startMcpServer(): Promise<void> {
           rawTokens: tokens,
           parentSessionId,
         });
-        return textResult({ id, name, tokens, continues: parentSessionId });
+
+        let compressedTokens: number | null = null;
+        if (a.compressed_context) {
+          compressedTokens = countTokens(a.compressed_context, model);
+          setCompressed(id, a.compressed_context, compressedTokens);
+        }
+
+        return textResult({ id, name, tokens, continues: parentSessionId, compressed_tokens: compressedTokens });
       }
       case "load_context": {
         const a = LoadArgs.parse(req.params.arguments);
@@ -158,6 +211,17 @@ export async function startMcpServer(): Promise<void> {
           updated_at: r.updated_at,
         }));
         return textResult(rows);
+      }
+      case "write_handoff": {
+        const a = WriteHandoffArgs.parse(req.params.arguments);
+        const session = a.session_id ? resolveSessionByIdOrPrefix(a.session_id) : listSessions(1)[0];
+        if (!session) return textResult({ error: "No session found. Call save_context first." }, true);
+
+        const adapter = getAdapter(a.target as HarnessId);
+        const cwd = a.cwd ?? process.cwd();
+        const block = wrapContexoBlock(a.body, session.id, session.harness_source);
+        const writtenTo = adapter.writeContexoBlock(cwd, block);
+        return textResult({ written_to: writtenTo, target: a.target, session_id: session.id });
       }
       default:
         return textResult({ error: `unknown tool ${req.params.name}` }, true);

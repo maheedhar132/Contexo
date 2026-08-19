@@ -89,11 +89,13 @@ standard — `plugin.json` + `mcp.json` + `skills/` at the repo root): add
 this repo as a plugin source in whichever of those clients you use; each
 reads the same manifest.
 
-Either path gives the agent four tools (`save_context`, `load_context`,
-`estimate_cost`, `list_sessions`) plus a `contexo` skill describing when to
-use them and when to fall back to the CLI-only commands (`handoff`,
-`budget`, `run`) that can't run as MCP tools since they write files or wrap
-external processes.
+Either path gives the agent five tools (`save_context`, `write_handoff`,
+`load_context`, `estimate_cost`, `list_sessions`) plus a `contexo` skill
+describing when to use them. `save_context` + `write_handoff` together do a
+complete handoff — the agent compresses using its own model access and
+Contexo just stores and writes it, no API key involved. `budget` and `run`
+stay CLI-only, since wrapping and killing an external process isn't
+something an MCP tool call can do.
 
 ## Wire Contexo into Claude Code manually
 
@@ -110,7 +112,7 @@ plugin, add to your Claude Code MCP config:
 
 (Already have it installed globally? `{ "command": "contexo", "args": ["mcp"] }` works too.)
 
-Claude Code now sees four tools: `save_context`, `load_context`, `estimate_cost`, `list_sessions`.
+Claude Code now sees five tools: `save_context`, `write_handoff`, `load_context`, `estimate_cost`, `list_sessions`.
 
 ## Wire Contexo into Cursor manually
 
@@ -139,9 +141,13 @@ Update the pricing table in [`src/cost.ts`](src/cost.ts) as providers change pri
 
 ## Compression, honestly
 
-Contexo's compression sends your raw context to Anthropic Haiku with a fixed system prompt (see [`src/compress.ts`](src/compress.ts)). Cost is roughly **$0.001 per compression** on typical sessions.
+There are two paths, and only one of them needs an API key.
 
-The free tier uses **your** `ANTHROPIC_API_KEY`. Contexo Pro will move compression to our servers (better prompt, no key required, and no per-compression cost on your end).
+**Running as an MCP tool inside an agent (Claude Code, Cursor, Codex) — no key needed.** The agent already has model access under your existing subscription for that tool. Contexo's `save_context` tool takes a `compressed_context` param and its `write_handoff` tool writes the finished brief straight into the target file — so the *agent* compresses using the same Task/Decisions/Dead ends/Next-step format Contexo would use, and Contexo just stores and writes it. No separate, redundant, separately-billed model call.
+
+**Running `contexo handoff` from a bare terminal, no agent in the loop — needs `ANTHROPIC_API_KEY`.** There's no agent to delegate to here, so Contexo makes its own call to Anthropic Haiku (see [`src/compress.ts`](src/compress.ts)), roughly **$0.001 per compression**. This is the fallback path, not the primary one — most real usage goes through the MCP tools above.
+
+Contexo Pro will remove even this fallback's key requirement by running compression on our servers.
 
 **We do not claim "zero token" handoffs.** Loading context into a new session always costs input tokens. What you get:
 

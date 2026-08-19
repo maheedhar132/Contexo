@@ -1,10 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-// Exported so tests can guard against regressing a section header without
-// hitting the Anthropic API.
-export const COMPRESSION_PROMPT = `You are compressing an AI-coding session (possibly spanning multiple harnesses/tools in sequence) so another AI harness can pick up work with zero re-onboarding.
-
-Produce a Markdown document with EXACTLY these sections, in this order. Omit any that would be empty.
+// Shared between the Anthropic-facing system prompt below (used by the CLI's
+// `contexo handoff`, which has no agent in the loop to delegate to) and the
+// agent-facing tool description in mcp.ts (used when Contexo is running as
+// an MCP tool inside an agent that already has its own model access — the
+// agent compresses using this exact format itself instead of Contexo making
+// a second, redundant, separately-billed LLM call). Keep in sync by editing
+// only here.
+export const BRIEF_FORMAT = `Produce a Markdown document with EXACTLY these sections, in this order. Omit any that would be empty.
 
 # Task
 One paragraph. What the user is trying to accomplish, in their own words if possible.
@@ -22,13 +25,22 @@ saving the next agent's time — its whole purpose is stopping the next
 agent from re-attempting something already ruled out and walking straight
 back into the same dead end. Only include things the raw context actually
 shows were tried and abandoned — do not infer a dead end from a decision
-that was simply made without an alternative being attempted first.
+that was simply made without an alternative being attempted first. This
+section is cumulative: if a previous brief already listed a dead end,
+carry it forward even if it isn't mentioned again — never let one quietly
+disappear, since that's exactly how it gets re-attempted.
 
 # Open questions
 Bulleted. Only questions the next agent must resolve to proceed. Do not invent questions.
 
 # Next step
-A single, unambiguous next action the new session should take.
+A single, unambiguous next action the new session should take.`;
+
+// Exported so tests can guard against regressing a section header without
+// hitting the Anthropic API.
+export const COMPRESSION_PROMPT = `You are compressing an AI-coding session (possibly spanning multiple harnesses/tools in sequence) so another AI harness can pick up work with zero re-onboarding.
+
+${BRIEF_FORMAT}
 
 Rules:
 - Never invent facts. If unsure, say "unclear from context".
