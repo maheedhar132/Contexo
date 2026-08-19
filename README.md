@@ -4,9 +4,6 @@
 
 Stop paying twice. Contexo saves your work in one harness (Claude Code, Codex, Cursor…) and hands it off to another in a single command — compressed, so the new session starts from the right place at near-zero token cost.
 
-<p align="center">
-  <img src="assets/contexo-handoff.gif" alt="Contexo saving a session in Claude Code, compressing it, and a brand-new session picking up full context automatically with zero re-explaining" width="800">
-</p>
 
 **A brand-new Claude Code session, given a prompt that never mentions the file it's about to edit, already knew.** `CLAUDE.md` carried the context — no re-explaining, ~50% fewer tokens than replaying the raw session.
 
