@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const COMPRESSION_PROMPT = `You are compressing an AI-coding session (possibly spanning multiple harnesses/tools in sequence) so another AI harness can pick up work with zero re-onboarding.
+// Exported so tests can guard against regressing a section header without
+// hitting the Anthropic API.
+export const COMPRESSION_PROMPT = `You are compressing an AI-coding session (possibly spanning multiple harnesses/tools in sequence) so another AI harness can pick up work with zero re-onboarding.
 
 Produce a Markdown document with EXACTLY these sections, in this order. Omit any that would be empty.
 
@@ -13,6 +15,15 @@ Bulleted. Each = a concrete decision currently in force (technology, naming, app
 # Changes so far
 Bulleted list of files created/modified with a one-line "why" per file, across the whole session.
 
+# Dead ends
+Bulleted. Each = an approach that was tried and abandoned or rejected, with
+a one-line reason why. This is the single most important section for
+saving the next agent's time — its whole purpose is stopping the next
+agent from re-attempting something already ruled out and walking straight
+back into the same dead end. Only include things the raw context actually
+shows were tried and abandoned — do not infer a dead end from a decision
+that was simply made without an alternative being attempted first.
+
 # Open questions
 Bulleted. Only questions the next agent must resolve to proceed. Do not invent questions.
 
@@ -24,11 +35,12 @@ Rules:
 - No preamble, no closing remarks, no meta commentary.
 - Assume the reader has zero prior context but is a competent engineer.
 - Target 400-800 tokens output. Prefer terse over verbose.
-- If the input spans multiple harness hops (marked with "--- from <harness> ---" separators), treat it as one continuous session — later hops take precedence over earlier ones when they conflict.`;
+- If the input spans multiple harness hops (marked with "--- from <harness> ---" separators), treat it as one continuous session — later hops take precedence over earlier ones when they conflict, EXCEPT Dead ends: those accumulate across every hop and are never dropped just because a later hop doesn't re-mention them. A dead end stays a dead end regardless of which harness discovered it.`;
 
-const DIFF_ADDENDUM = `
+export const DIFF_ADDENDUM = `
 You are ALSO given the PREVIOUS handoff brief that's currently written into the target file (below, inside <previous_brief>). Do not silently drop or restate anything from it unchanged — reconcile it against the new session content:
 - If a previous Decision or Change no longer holds given the new session content, do not carry it forward as if still true. Either omit it or, if it's directly relevant to avoiding a repeated mistake, note it under Decisions as superseded (e.g. "~~Use X~~ — replaced with Y").
+- Dead ends are the one section that is cumulative, not reconciled: carry every dead end from the previous brief forward even if the new session content doesn't mention it again, and add any new ones the new content reveals. Never let a previously-identified dead end silently disappear — that's exactly the failure mode this section exists to prevent.
 - If nothing in the previous brief changed for a section, it's fine for that section to stay the same.
 - Never present a superseded fact as current.`;
 

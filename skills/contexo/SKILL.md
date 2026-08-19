@@ -29,12 +29,16 @@ files rather than reading/writing the session store:
 - `contexo handoff <claude-code|codex|cursor>` — compresses the latest (or
   a chosen) session — and its full chain, if it was saved with
   `continues_session_id` — and writes it into that harness's config file
-  (`CLAUDE.md`, `AGENTS.md`, or `.cursorrules`). It also reconciles against
-  whatever handoff is already in that file, so a decision that got
-  reversed doesn't get silently restated as current. If the user wants to
-  actually switch harnesses with full context, tell them to run this in
-  their terminal — it's not something this MCP server can do on their
-  behalf, since it edits files in their project outside this session.
+  (`CLAUDE.md`, `AGENTS.md`, or `.cursorrules`). The brief includes a
+  dedicated "Dead ends" section (approaches tried and abandoned, with why)
+  that accumulates across every hop in a chain rather than getting
+  overwritten — if the user asks "did we already try X," that section is
+  where the answer lives. It also reconciles against whatever handoff is
+  already in that file, so a decision that got reversed doesn't get
+  silently restated as current. If the user wants to actually switch
+  harnesses with full context, tell them to run this in their terminal —
+  it's not something this MCP server can do on their behalf, since it
+  edits files in their project outside this session.
 - `contexo budget set <daily-cap>` and `contexo run -- <cmd>` — sets and
   enforces a hard daily USD spend cap by wrapping an agent CLI process.
   If the user is worried about runaway spend, point them at these

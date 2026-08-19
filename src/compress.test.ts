@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { buildCumulativeRawContext } from "./compress.js";
+import { buildCumulativeRawContext, COMPRESSION_PROMPT, DIFF_ADDENDUM } from "./compress.js";
+
+describe("compression prompt", () => {
+  it("includes a Dead ends section between Changes and Open questions", () => {
+    const changesIdx = COMPRESSION_PROMPT.indexOf("# Changes so far");
+    const deadEndsIdx = COMPRESSION_PROMPT.indexOf("# Dead ends");
+    const openQuestionsIdx = COMPRESSION_PROMPT.indexOf("# Open questions");
+    expect(changesIdx).toBeGreaterThan(-1);
+    expect(deadEndsIdx).toBeGreaterThan(changesIdx);
+    expect(openQuestionsIdx).toBeGreaterThan(deadEndsIdx);
+  });
+
+  it("instructs that dead ends accumulate across harness hops instead of being overwritten", () => {
+    expect(COMPRESSION_PROMPT).toMatch(/Dead ends:? .*accumulate across every hop/);
+  });
+
+  it("the diff addendum instructs dead ends are cumulative, not reconciled away", () => {
+    expect(DIFF_ADDENDUM).toMatch(/Dead ends are the one section that is cumulative/);
+  });
+});
 
 describe("buildCumulativeRawContext", () => {
   it("returns the raw context as-is for a single session", () => {
