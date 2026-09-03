@@ -2,6 +2,16 @@
   "name": "@maheedhar132/contexo",
   "version": "0.4.0",
   "description": "Portable AI context and cost control across every AI coding harness.",
+  "author": {
+    "name": "maheedhar132",
+    "url": "https://github.com/maheedhar132"
+  },
+  "homepage": "https://github.com/maheedhar132/Contexo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maheedhar132/Contexo.git"
+  },
+  "bugs": "https://github.com/maheedhar132/Contexo/issues",
   "keywords": [
     "ai",
     "mcp",

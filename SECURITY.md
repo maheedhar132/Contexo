@@ -3,9 +3,9 @@
 ## Reporting a Vulnerability
 
 If you find a security issue in Contexo, please **do not open a public
-GitHub issue**. Instead, email the maintainer listed in `package.json`, or
-use GitHub's private [security advisory](https://github.com/maheedhar132/Contexo/security/advisories/new)
-form for this repository.
+GitHub issue**. Instead, use GitHub's private [security advisory](https://github.com/maheedhar132/Contexo/security/advisories/new)
+form for this repository, or contact the maintainer via the link in
+`package.json`'s `author` field.
 
 Please include:
 - A description of the issue and its impact

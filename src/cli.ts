@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import kleur from "kleur";
 import { saveCommand } from "./commands/save.js";
 import { sessionsList, sessionShow, sessionDelete } from "./commands/sessions.js";
@@ -72,7 +72,11 @@ program
   .option("-f, --file <path>", "Read text from file")
   .option("-t, --text <text>", "Inline text")
   .option("-m, --model <model>", "Model", "claude-sonnet-4-5")
-  .option("--expected-output <n>", "Expected output tokens", (v) => Number.parseInt(v, 10))
+  .option("--expected-output <n>", "Expected output tokens", (v) => {
+    const n = Number.parseInt(v, 10);
+    if (!Number.isFinite(n) || n < 0) throw new InvalidArgumentError("must be a non-negative integer.");
+    return n;
+  })
   .option("--all", "Compare across all supported models")
   .action((opts) => {
     estimateCommand({

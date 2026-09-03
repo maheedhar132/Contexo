@@ -25,7 +25,14 @@ const PRICING: Record<ModelId, { provider: Provider; price: Price }> = {
   "o1-mini": { provider: "openai", price: { input: 3, output: 12 } },
 };
 
+export function isValidModel(model: string): model is ModelId {
+  return Object.prototype.hasOwnProperty.call(PRICING, model);
+}
+
 export function providerFor(model: ModelId): Provider {
+  if (!isValidModel(model)) {
+    throw new Error(`Unknown model "${model}". Supported models: ${listModels().join(", ")}`);
+  }
   return PRICING[model].provider;
 }
 

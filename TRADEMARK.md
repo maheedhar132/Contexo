@@ -19,6 +19,6 @@ The source code in this repository is licensed under Apache License 2.0 (see `LI
 
 ## Reporting violations
 
-Open an issue or email the maintainer listed in `package.json`.
+Open an issue or contact the maintainer via the link in `package.json`'s `author` field.
 
 This policy is inspired by the trademark policies of Mozilla, WordPress, and Rust.
