@@ -83,6 +83,17 @@ describe("stats summary", () => {
       tokensSaved: 180,
     });
   });
+
+  it("clamps tokensSaved at 0 instead of going negative when a brief ends up longer than the raw save", async () => {
+    const db = await import("./db.js");
+    db.saveSession({ id: "tiny", name: "tiny", harnessSource: null, rawContext: "fixed typo", rawTokens: 3 });
+    db.setCompressed("tiny", "# Task\nFix a typo.\n\n# Next step\nDone.", 12);
+
+    const summary = db.getStatsSummary();
+    expect(summary.rawTokens).toBe(3);
+    expect(summary.compressedTokens).toBe(12);
+    expect(summary.tokensSaved).toBe(0);
+  });
 });
 
 describe("budgets and runs", () => {

@@ -82,12 +82,20 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
   if (previousBrief) {
     console.log(kleur.dim("  diffed against the existing handoff already in this file"));
   }
+  // Positive = shrank (the expected case); negative = the brief ended up
+  // longer than the raw save (e.g. a short save with a verbose template).
   const savedPct =
-    rawTokensTotal > 0 && compressedTokens > 0 ? ((1 - compressedTokens / rawTokensTotal) * 100).toFixed(1) : null;
+    rawTokensTotal > 0 && compressedTokens > 0 ? ((rawTokensTotal - compressedTokens) / rawTokensTotal) * 100 : null;
+  const pctLabel =
+    savedPct === null
+      ? ""
+      : savedPct >= 0
+        ? kleur.green(`  (-${savedPct.toFixed(1)}%)`)
+        : kleur.yellow(`  (+${Math.abs(savedPct).toFixed(1)}% larger)`);
   console.log(
     `  ${kleur.dim("raw")}         ${rawTokensTotal.toLocaleString()} tokens\n` +
       `  ${kleur.dim("handoff")}     ${compressedTokens.toLocaleString()} tokens` +
-      (savedPct ? kleur.green(`  (-${savedPct}%)`) : ""),
+      pctLabel,
   );
   if (rawTokensTotal > compressedTokens) {
     const usdSaved = usdSavedForTokens(rawTokensTotal - compressedTokens);

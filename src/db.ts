@@ -213,5 +213,9 @@ export function getStatsSummary(): StatsSummary {
        WHERE compressed_tokens IS NOT NULL`,
     )
     .get() as { sessionsCompressed: number; rawTokens: number; compressedTokens: number };
-  return { ...row, tokensSaved: row.rawTokens - row.compressedTokens };
+  // A brief's fixed section-header overhead can outweigh a very short raw
+  // save, so this can go negative in isolation; clamp the headline "saved"
+  // figure at 0 rather than showing the user a negative dollar amount
+  // (handoff.ts already guards the equivalent case before its own display).
+  return { ...row, tokensSaved: Math.max(0, row.rawTokens - row.compressedTokens) };
 }

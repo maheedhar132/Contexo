@@ -75,6 +75,7 @@ export function budgetRun(argv: string[]): Promise<number> {
     const spent = { total: spendSince(Date.now() - DAY_MS) };
     const runId = randomUUID();
     let sawAnyCost = false;
+    let budgetKilled = false;
 
     const scanFor = (chunk: Buffer) => {
       const text = chunk.toString("utf8");
@@ -101,6 +102,7 @@ export function budgetRun(argv: string[]): Promise<number> {
           kleur.red("\n! Budget cap hit ") +
             kleur.dim(`(${formatUsd(spent.total)} >= ${formatUsd(cap)}). Terminating.`),
         );
+        budgetKilled = true;
         killProcessTree(child);
       }
     };
@@ -119,7 +121,10 @@ export function budgetRun(argv: string[]): Promise<number> {
             "(see `contexo budget set` for details).",
         );
       }
-      resolve(code ?? 0);
+      // A signal-killed child reports code=null even though it didn't finish —
+      // resolving that as 0 would tell scripts/CI checking `$?` that the run
+      // succeeded when Contexo actually terminated it for overspending.
+      resolve(budgetKilled ? 1 : (code ?? 0));
     });
     child.on("error", reject);
   });
