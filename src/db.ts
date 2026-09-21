@@ -152,6 +152,16 @@ export function listSessions(limit = 20): SessionRow[] {
     .all(limit) as SessionRow[];
 }
 
+// Shared "exact id, else prefix" lookup — was duplicated with slightly
+// different shapes across sessions.ts, save.ts, handoff.ts, and mcp.ts.
+// Prefix match only searches the 500 most recently updated sessions, same
+// tradeoff those call sites already made.
+export function resolveSession(idOrPrefix: string): SessionRow | undefined {
+  const exact = getSession(idOrPrefix);
+  if (exact) return exact;
+  return listSessions(500).find((r) => r.id.startsWith(idOrPrefix));
+}
+
 export function deleteSession(id: string): void {
   db().prepare(`DELETE FROM sessions WHERE id=?`).run(id);
 }

@@ -1,5 +1,5 @@
 import kleur from "kleur";
-import { getSession, listSessions, setCompressed, getSessionChain } from "../db.js";
+import { resolveSession, listSessions, setCompressed, getSessionChain } from "../db.js";
 import { getAdapter, wrapContexoBlock, extractContexoBlockBody, type HarnessId } from "../adapters/index.js";
 import { compressContext, buildCumulativeRawContext } from "../compress.js";
 import { countTokens, formatUsd, usdSavedForTokens, type ModelId } from "../cost.js";
@@ -13,9 +13,12 @@ export type HandoffOptions = {
 
 export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {}): Promise<void> {
   const cwd = opts.cwd ?? process.cwd();
-  const sessionRow = resolveSession(opts.session);
+  const sessionRow = resolveHandoffSession(opts.session);
   if (!sessionRow) {
-    console.log(kleur.red("No session found. Save one first: contexo save --file <path>"));
+    const msg = opts.session
+      ? `Session ${opts.session} not found.`
+      : "No session found. Save one first: contexo save --file <path>";
+    console.log(kleur.red(msg));
     process.exitCode = 1;
     return;
   }
@@ -108,15 +111,7 @@ export async function handoffCommand(target: HarnessId, opts: HandoffOptions = {
   console.log(kleur.dim(`\nOpen ${adapter.displayName} in this folder to continue with full context.`));
 }
 
-function resolveSession(idOrPrefix?: string) {
-  if (idOrPrefix) {
-    const exact = getSession(idOrPrefix);
-    if (exact) return exact;
-    const rows = listSessions(500);
-    const match = rows.find((r) => r.id.startsWith(idOrPrefix));
-    if (match) return match;
-    return undefined;
-  }
-  const rows = listSessions(1);
-  return rows[0];
+function resolveHandoffSession(idOrPrefix?: string) {
+  if (idOrPrefix) return resolveSession(idOrPrefix);
+  return listSessions(1)[0];
 }

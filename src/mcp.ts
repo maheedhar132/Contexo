@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { getSession, listSessions, saveSession, setCompressed, getStatsSummary } from "./db.js";
+import { resolveSession, listSessions, saveSession, setCompressed, getStatsSummary } from "./db.js";
 import { countTokens, estimateCost, listModels, usdSavedForTokens, type ModelId } from "./cost.js";
 import { VERSION } from "./version.js";
 import { BRIEF_FORMAT } from "./compress.js";
@@ -156,7 +156,7 @@ export async function startMcpServer(): Promise<void> {
 
         let parentSessionId: string | null = null;
         if (a.continues_session_id) {
-          const parent = resolveSessionByIdOrPrefix(a.continues_session_id);
+          const parent = resolveSession(a.continues_session_id);
           if (!parent) {
             return textResult({ error: `continues_session_id ${a.continues_session_id}: no matching session found` }, true);
           }
@@ -185,7 +185,7 @@ export async function startMcpServer(): Promise<void> {
       }
       case "load_context": {
         const a = LoadArgs.parse(req.params.arguments);
-        const s = resolveSessionByIdOrPrefix(a.id);
+        const s = resolveSession(a.id);
         if (!s) return textResult({ error: `session ${a.id} not found` }, true);
         return textResult({
           id: s.id,
@@ -225,7 +225,7 @@ export async function startMcpServer(): Promise<void> {
       }
       case "write_handoff": {
         const a = WriteHandoffArgs.parse(req.params.arguments);
-        const session = a.session_id ? resolveSessionByIdOrPrefix(a.session_id) : listSessions(1)[0];
+        const session = a.session_id ? resolveSession(a.session_id) : listSessions(1)[0];
         if (!session) return textResult({ error: "No session found. Call save_context first." }, true);
 
         const adapter = getAdapter(a.target as HarnessId);
@@ -241,12 +241,6 @@ export async function startMcpServer(): Promise<void> {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-}
-
-function resolveSessionByIdOrPrefix(idOrPrefix: string) {
-  const exact = getSession(idOrPrefix);
-  if (exact) return exact;
-  return listSessions(500).find((r) => r.id.startsWith(idOrPrefix));
 }
 
 function textResult(payload: unknown, isError = false) {

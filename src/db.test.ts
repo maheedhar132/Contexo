@@ -29,6 +29,25 @@ describe("sessions", () => {
   });
 });
 
+describe("resolveSession", () => {
+  it("finds a session by its exact id", async () => {
+    const db = await import("./db.js");
+    db.saveSession({ id: "abcdef12", name: "exact", harnessSource: null, rawContext: "x", rawTokens: 1 });
+    expect(db.resolveSession("abcdef12")?.name).toBe("exact");
+  });
+
+  it("falls back to a prefix match when there's no exact id hit", async () => {
+    const db = await import("./db.js");
+    db.saveSession({ id: "abcdef12-xyz", name: "prefix", harnessSource: null, rawContext: "x", rawTokens: 1 });
+    expect(db.resolveSession("abcdef12")?.name).toBe("prefix");
+  });
+
+  it("returns undefined when nothing matches", async () => {
+    const db = await import("./db.js");
+    expect(db.resolveSession("nope")).toBeUndefined();
+  });
+});
+
 describe("session chains", () => {
   it("links a session to its parent and walks the full lineage oldest-first", async () => {
     const db = await import("./db.js");

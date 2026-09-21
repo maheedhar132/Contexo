@@ -1,5 +1,5 @@
 import kleur from "kleur";
-import { listSessions, getSession, deleteSession } from "../db.js";
+import { listSessions, resolveSession, deleteSession } from "../db.js";
 
 export function sessionsList(): void {
   const rows = listSessions(20);
@@ -19,7 +19,7 @@ export function sessionsList(): void {
 }
 
 export function sessionShow(id: string): void {
-  const s = getSession(id) ?? getSession(findByPrefix(id) ?? id);
+  const s = resolveSession(id);
   if (!s) {
     console.log(kleur.red(`Session ${id} not found.`));
     process.exitCode = 1;
@@ -38,19 +38,12 @@ export function sessionShow(id: string): void {
 }
 
 export function sessionDelete(id: string): void {
-  const resolved = findByPrefix(id) ?? id;
-  const s = getSession(resolved);
+  const s = resolveSession(id);
   if (!s) {
     console.log(kleur.red(`Session ${id} not found.`));
     process.exitCode = 1;
     return;
   }
-  deleteSession(resolved);
-  console.log(kleur.green("✓") + ` Deleted ${resolved.slice(0, 8)} (${s.name})`);
-}
-
-function findByPrefix(prefix: string): string | null {
-  const rows = listSessions(500);
-  const match = rows.find((r) => r.id.startsWith(prefix));
-  return match?.id ?? null;
+  deleteSession(s.id);
+  console.log(kleur.green("✓") + ` Deleted ${s.id.slice(0, 8)} (${s.name})`);
 }

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import kleur from "kleur";
-import { saveSession, getSession, listSessions } from "../db.js";
+import { saveSession, resolveSession } from "../db.js";
 import { countTokens, type ModelId } from "../cost.js";
 import { detectHarnesses } from "../adapters/index.js";
 
@@ -25,7 +25,7 @@ export async function saveCommand(opts: SaveOptions): Promise<{ id: string; toke
   const name = opts.name ?? `session-${new Date().toISOString().slice(0, 16).replace("T", "-")}`;
   const detected = detectHarnesses(cwd)[0]?.id ?? null;
 
-  const parentSessionId = opts.continues ? resolveParent(opts.continues) : null;
+  const parentSessionId = opts.continues ? (resolveSession(opts.continues)?.id ?? null) : null;
   if (opts.continues && !parentSessionId) {
     throw new Error(`--continues ${opts.continues}: no matching session found.`);
   }
@@ -39,13 +39,6 @@ export async function saveCommand(opts: SaveOptions): Promise<{ id: string; toke
     console.log(`  ${kleur.dim("continues")} ${parentSessionId.slice(0, 8)}`);
   }
   return { id, tokens };
-}
-
-function resolveParent(idOrPrefix: string): string | null {
-  const exact = getSession(idOrPrefix);
-  if (exact) return exact.id;
-  const match = listSessions(500).find((r) => r.id.startsWith(idOrPrefix));
-  return match?.id ?? null;
 }
 
 function resolveInput(opts: SaveOptions): string {

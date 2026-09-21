@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Adapter } from "./types.js";
 import { replaceContexoBlock } from "./types.js";
 
@@ -30,7 +30,14 @@ export const cursor: Adapter = {
   },
   writeContexoBlock(cwd, block) {
     const p = preferredPath(cwd);
-    if (p.includes(".cursor")) mkdirSync(join(cwd, ".cursor", "rules"), { recursive: true });
+    // `.cursorrules` (the legacy path) also contains the substring ".cursor",
+    // so a naive p.includes(".cursor") check fired even in the legacy
+    // branch and planted an empty .cursor/rules/ dir — which then flipped
+    // detect()/preferredPath() to the new path on every later call, silently
+    // switching a project off .cursorrules the first time it was written to.
+    // mkdir cwd's own dirname unconditionally instead: a no-op for the
+    // legacy path (cwd already exists), and correct for the nested one.
+    mkdirSync(dirname(p), { recursive: true });
     const existing = existsSync(p) ? readFileSync(p, "utf8") : "";
     const next = replaceContexoBlock(existing, block);
     writeFileSync(p, next, "utf8");
